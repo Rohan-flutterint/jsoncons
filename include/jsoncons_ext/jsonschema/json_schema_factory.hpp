@@ -18,6 +18,8 @@
 #include <jsoncons_ext/jsonschema/draft6/schema_validator_factory_6.hpp>
 #include <jsoncons_ext/jsonschema/draft7/schema_validator_factory_7.hpp>
 
+#include <jsoncons/allocator_set.hpp>
+
 namespace jsoncons {
 namespace jsonschema {
 
@@ -276,6 +278,79 @@ namespace jsonschema {
         schema_validator_factory_base->build_schema();
         return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
     }
+
+    //
+
+    template <typename Alloc,typename TempAlloc,typename Json,typename SchemaResolver>
+    typename std::enable_if<ext_traits::is_unary_function_object_exact<SchemaResolver,Json,jsoncons::uri>::value,json_schema<Json>>::type
+    make_json_schema(const allocator_set<Alloc,TempAlloc>& aset, Json sch, const std::string& retrieval_uri, const SchemaResolver& resolver, 
+        evaluation_options options = evaluation_options{})
+    {
+        using schema_store_allocator_type = typename std::allocator_traits<TempAlloc>:: template rebind_alloc<std::pair<const jsoncons::uri, schema_validator<Json>*>>;
+        using schema_store_type = std::map<jsoncons::uri, schema_validator<Json>*, std::less<jsoncons::uri>, schema_store_allocator_type>;
+        schema_store_type schema_store(aset.get_temp_allocator());
+        validator_factory_factory<Json> factory_factory{};
+
+        std::unordered_map<std::string,bool> vocabulary{};
+        std::vector<resolve_uri_type<Json>> resolve_funcs = {{meta_resolver<Json>, resolver}};
+        auto schema_validator_factory_base = factory_factory(std::move(sch), options, &schema_store, resolve_funcs, vocabulary);
+
+        schema_validator_factory_base->build_schema(retrieval_uri);
+        return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
+    }
+
+    template <typename Alloc,typename TempAlloc,typename Json>
+    json_schema<Json> make_json_schema(const allocator_set<Alloc,TempAlloc>& aset, Json sch, const std::string& retrieval_uri, 
+        evaluation_options options = evaluation_options{})
+    {
+        using schema_store_allocator_type = typename std::allocator_traits<TempAlloc>:: template rebind_alloc<std::pair<const jsoncons::uri, schema_validator<Json>*>>;
+        using schema_store_type = std::map<jsoncons::uri, schema_validator<Json>*, std::less<jsoncons::uri>, schema_store_allocator_type>;
+        schema_store_type schema_store(aset.get_temp_allocator());
+        validator_factory_factory<Json> factory_factory{};
+
+        std::unordered_map<std::string,bool> vocabulary{};
+        std::vector<resolve_uri_type<Json>> resolve_funcs = {{meta_resolver<Json>}};
+        auto schema_validator_factory_base = factory_factory(std::move(sch), options, &schema_store, resolve_funcs, vocabulary);
+
+        schema_validator_factory_base->build_schema(retrieval_uri);
+        return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
+    }
+
+    template <typename Alloc,typename TempAlloc,typename Json,typename SchemaResolver>
+    typename std::enable_if<ext_traits::is_unary_function_object_exact<SchemaResolver,Json,jsoncons::uri>::value,json_schema<Json>>::type
+    make_json_schema(const allocator_set<Alloc,TempAlloc>& aset, Json sch, const SchemaResolver& resolver, 
+        evaluation_options options = evaluation_options{})
+    {
+        using schema_store_allocator_type = typename std::allocator_traits<TempAlloc>:: template rebind_alloc<std::pair<const jsoncons::uri, schema_validator<Json>*>>;
+        using schema_store_type = std::map<jsoncons::uri, schema_validator<Json>*, std::less<jsoncons::uri>, schema_store_allocator_type>;
+        schema_store_type schema_store(aset.get_temp_allocator());
+        validator_factory_factory<Json> factory_factory{};
+
+        std::unordered_map<std::string,bool> vocabulary{};
+        std::vector<resolve_uri_type<Json>> resolve_funcs = {{meta_resolver<Json>, resolver}};
+        auto schema_validator_factory_base = factory_factory(std::move(sch), options, &schema_store, resolve_funcs, vocabulary);
+
+        schema_validator_factory_base->build_schema();
+        return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
+    }
+
+    template <typename Alloc,typename TempAlloc,typename Json>
+    json_schema<Json> make_json_schema(const allocator_set<Alloc,TempAlloc>& aset, Json sch, 
+        evaluation_options options = evaluation_options{})
+    {
+        using schema_store_allocator_type = typename std::allocator_traits<TempAlloc>:: template rebind_alloc<std::pair<const jsoncons::uri, schema_validator<Json>*>>;
+        using schema_store_type = std::map<jsoncons::uri, schema_validator<Json>*,std::less<jsoncons::uri>,schema_store_allocator_type>;
+        schema_store_type schema_store(aset.get_temp_allocator()); 
+        validator_factory_factory<Json> factory_factory{};
+
+        std::unordered_map<std::string,bool> vocabulary{};
+        std::vector<resolve_uri_type<Json>> resolve_funcs = {{meta_resolver<Json>}};
+        auto schema_validator_factory_base = factory_factory(std::move(sch), options, &schema_store, resolve_funcs, vocabulary);
+
+        schema_validator_factory_base->build_schema();
+        return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
+    }
+
 
 } // namespace jsonschema
 } // namespace jsoncons
